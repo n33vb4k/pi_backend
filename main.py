@@ -18,7 +18,7 @@ exerciseC   = db["ExerciseDB"]         #username (str, FK), exerciseName (str), 
 # ---------------------------------config------------------------------
 
 
-@app.route("/username-exists", methods = ["GET"])
+@app.route("/username-exists", methods = ["POST"])
 def check_user():
     data = request.get_json()
     try:
@@ -33,7 +33,7 @@ def check_user():
         return jsonify({"success": False, "error": str(e)})
     
 
-@app.route("/login" , methods = ["GET"])
+@app.route("/login" , methods = ["POST"])
 def login():
     data = request.get_json()
     try:
