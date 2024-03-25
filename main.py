@@ -2,11 +2,12 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from pymongo import MongoClient
 import certifi
+import os
 
 app = Flask(__name__)
 CORS(app)
 
-cluster = MongoClient("mongodb+srv://Neev:bypky6-pyjgic-favTus@piproject.oczoj3i.mongodb.net/?retryWrites=true&w=majority&appName=PIproject", tlsCAFile=certifi.where())
+cluster = MongoClient(os.environ['URL'], tlsCAFile=certifi.where())
 
 db          = cluster["ProjectDB"]
 userLoginsC = db["UserLoginDB"]        #Username (str, PK), Email (str), Password(str)
