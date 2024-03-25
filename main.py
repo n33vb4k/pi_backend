@@ -1,4 +1,5 @@
-from flask import Flask, request, jsonify
+# ---------------------------------config------------------------------
+from flask import Flask, request, jsonify, redirect
 from flask_cors import CORS
 from pymongo import MongoClient
 import certifi
@@ -16,14 +17,14 @@ glucoseC    = db["GlucoseDB"]          #username (str, FK), glucoseLevel (float)
 nutritionC  = db["NutritionDB"]        #username (str, FK), foodName (str), quantity (float), calories(int)
 exerciseC   = db["ExerciseDB"]         #username (str, FK), exerciseName (str), quantity (int), caloriesBurnt(int),  exerciseType(string)
 
-# ---------------------------------config------------------------------
+# ---------------------------------routes------------------------------
 
 
 @app.route("/username-exists", methods = ["POST"])
 def check_user():
     data = request.get_json()
     try:
-        check = userLoginsC.find_one({
+        check = userLoginsC.find_one({  
             "username" : data["username"]
         })
         if check and len(check) != 0:
@@ -46,18 +47,28 @@ def login():
             return jsonify({
                 "success": True,
                 "message": "Login successful",
-                "token": str(uuid4())
+                "token"  : str(uuid4())
             }), 200
         else:
             return jsonify({"success": False, "message": "Login failed"}), 201
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)})
+        return jsonify({"success": False, "error": str(e)}), 401
     
 
 
 @app.route("/register", methods = ["POST"])
 def register():
-    pass
+    data = request.get_json()
+    try:
+        insert = userLoginsC.insert_one({
+            "username"  : data["username"],
+            "email"     : data["email"], 
+            "password"  : data["password"]
+            })
+        return jsonify({"success": True, "message": "user added"}), 200
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e) }), 400
+    
 
 
 @app.route("/glucose", methods=["POST"])
@@ -65,8 +76,10 @@ def post_blood_sugar_data():
     data = request.get_json()
     try:
         insert = glucoseC.insert_one({
+            "username"      : data["username"],
             "glucose_level" : data["glucoseLevel"], 
             "date_time"     : data["dateTime"],
+            "description"   : data["description"]
             })
         return jsonify({"success": True, "error": None}), 200
     except Exception as e:
@@ -79,12 +92,15 @@ def post_food_data():
     #check if calories are null, then use API to calculate the calories
     try:
         insert = nutritionC.insert_one({
-            "food_name": data["foodName"], 
-            "quantitiy": data["quantity"], 
-            "calories" : data["calories"],
+            "username"  : data["username"],
+            "food_name" : data["foodName"], 
+            "quantitiy" : data["quantity"], 
+            "calories"  : data["calories"],
+            "date_time" : data["dateTime"]
             })
         return jsonify({"success": True, "error": None}), 201
     except Exception as e:
+        print(e)
         return jsonify({"success": False, "error": str(e) }), 401
 
 
@@ -94,12 +110,16 @@ def post_exercise_data():
     #check if caloriesBurnt is null, then use api to calculate 
     try:
         insert = exerciseC.insert_one({
+            "username"       : data["username"],
             "exercise_name"  : data["exerciseName"], 
-            "reps"           : data["reps"], 
+            "duration"       : data["duration"], 
             "calories_burnt" : data["caloriesBurnt"],
+            "exercise_type"  : data["exerciseType"],
+            "date_time"      : data["dateTime"],
             })
         return jsonify({"success": True, "error": None}), 202
     except Exception as e:
+        print(e)
         return jsonify({"success": False, "error": str(e) }), 402
 
 
