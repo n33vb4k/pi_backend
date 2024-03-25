@@ -6,13 +6,13 @@ import certifi
 app = Flask(__name__)
 CORS(app)
 
-cluster = MongoClient("URL", tlsCAFile=certifi.where())
+cluster = MongoClient("mongodb+srv://Neev:bypky6-pyjgic-favTus@piproject.oczoj3i.mongodb.net/?retryWrites=true&w=majority&appName=PIproject", tlsCAFile=certifi.where())
 
-db = cluster["ProjectDB"]
-userLoginsC = db["UserLoginDB"]     #Username (str, PK), Email (str), Password(str)
-glucoseC = db["GlucoseDB"]          #user (str, FK), glucoseLevel (float), datetime (time)
-nutritionC = db["NutritionDB"]      #user (str, FK), foodName (str), quantity (float), calories(int)
-exerciseC = db["ExerciseDB"]        #user (str, FK), exerciseName (str), reps (int), caloriesBurnt(int)
+db          = cluster["ProjectDB"]
+userLoginsC = db["UserLoginDB"]        #Username (str, PK), Email (str), Password(str)
+glucoseC    = db["GlucoseDB"]          #username (str, FK), glucoseLevel (float), datetime (time)
+nutritionC  = db["NutritionDB"]        #username (str, FK), foodName (str), quantity (float), calories(int)
+exerciseC   = db["ExerciseDB"]         #username (str, FK), exerciseName (str), quantity (int), caloriesBurnt(int)
 
 # ---------------------------------config------------------------------
 
