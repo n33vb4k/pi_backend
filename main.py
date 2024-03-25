@@ -60,7 +60,7 @@ def register():
     pass
 
 
-@app.route("/post-glucose", methods=["POST"])
+@app.route("/glucose", methods=["POST"])
 def post_blood_sugar_data():
     data = request.get_json()
     try:
@@ -73,7 +73,7 @@ def post_blood_sugar_data():
         return jsonify({"success": False, "error": str(e) }), 400
     
 
-@app.route("/post-nutrition", methods=["POST"])
+@app.route("/nutrition", methods=["POST"])
 def post_food_data():
     data = request.get_json()
     #check if calories are null, then use API to calculate the calories
@@ -88,7 +88,7 @@ def post_food_data():
         return jsonify({"success": False, "error": str(e) }), 401
 
 
-@app.route("/post-exercise", methods=["POST"])
+@app.route("/exercise", methods=["POST"])
 def post_exercise_data():
     data = request.get_json()
     #check if caloriesBurnt is null, then use api to calculate 
