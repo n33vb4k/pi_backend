@@ -7,19 +7,48 @@ import os
 app = Flask(__name__)
 CORS(app)
 
-cluster = MongoClient(os.environ['URL'], tlsCAFile=certifi.where())
+cluster = MongoClient(os.environ["URL"], tlsCAFile=certifi.where())
 
 db          = cluster["ProjectDB"]
 userLoginsC = db["UserLoginDB"]        #Username (str, PK), Email (str), Password(str)
-glucoseC    = db["GlucoseDB"]          #username (str, FK), glucoseLevel (float), datetime (time)
+glucoseC    = db["GlucoseDB"]          #username (str, FK), glucoseLevel (float), datetime (time), description(string)
 nutritionC  = db["NutritionDB"]        #username (str, FK), foodName (str), quantity (float), calories(int)
-exerciseC   = db["ExerciseDB"]         #username (str, FK), exerciseName (str), quantity (int), caloriesBurnt(int)
+exerciseC   = db["ExerciseDB"]         #username (str, FK), exerciseName (str), quantity (int), caloriesBurnt(int),  exerciseType(string)
 
 # ---------------------------------config------------------------------
 
-@app.route("/login", methods = ["GET"])
+
+@app.route("/username-exists", methods = ["GET"])
+def check_user():
+    data = request.get_json()
+    try:
+        check = userLoginsC.find_one({
+            "username" : data["username"]
+        })
+        if check and len(check) != 0:
+            return jsonify({"success": True, "message": "User exists"}), 200
+        else:
+            return jsonify({"success": True, "message": "User not found, please register"}), 201
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+    
+
+@app.route("/login" , methods = ["GET"])
 def login():
-    pass
+    data = request.get_json()
+    try:
+        check = userLoginsC.find_one({
+            "username" : data["username"],
+            "password" : data["password"]
+        })
+        if check and len(check) != 0:
+            return jsonify({"success": True, "message": "Login successful"}), 200
+        else:
+            return jsonify({"success": False, "message": "Login failed"}), 201
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+    
+
 
 @app.route("/register", methods = ["POST"])
 def register():
