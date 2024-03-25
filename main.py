@@ -3,6 +3,7 @@ from flask_cors import CORS
 from pymongo import MongoClient
 import certifi
 import os
+from uuid import uuid4
 
 app = Flask(__name__)
 CORS(app)
@@ -42,7 +43,11 @@ def login():
             "password" : data["password"]
         })
         if check and len(check) != 0:
-            return jsonify({"success": True, "message": "Login successful"}), 200
+            return jsonify({
+                "success": True,
+                "message": "Login successful",
+                "token": str(uuid4())
+            }), 200
         else:
             return jsonify({"success": False, "message": "Login failed"}), 201
     except Exception as e:
