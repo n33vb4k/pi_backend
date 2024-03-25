@@ -60,8 +60,10 @@ def post_blood_sugar_data():
     data = request.get_json()
     try:
         insert = glucoseC.insert_one({
+            "username"      : data["username"],
             "glucose_level" : data["glucoseLevel"], 
             "date_time"     : data["dateTime"],
+            "description"   : data["description"]
             })
         return jsonify({"success": True, "error": None}), 200
     except Exception as e:
@@ -74,9 +76,11 @@ def post_food_data():
     #check if calories are null, then use API to calculate the calories
     try:
         insert = nutritionC.insert_one({
-            "food_name": data["foodName"], 
-            "quantitiy": data["quantity"], 
-            "calories" : data["calories"],
+            "username"  : data["username"],
+            "food_name" : data["foodName"], 
+            "quantitiy" : data["quantity"], 
+            "calories"  : data["calories"],
+            "date_time" : data["dateTime"]
             })
         return jsonify({"success": True, "error": None}), 201
     except Exception as e:
@@ -89,9 +93,11 @@ def post_exercise_data():
     #check if caloriesBurnt is null, then use api to calculate 
     try:
         insert = exerciseC.insert_one({
-            "exercise_name"  : data["exerciseName"], 
-            "reps"           : data["reps"], 
-            "calories_burnt" : data["caloriesBurnt"],
+            "username"          : data["username"],
+            "exercise_name"     : data["exerciseName"], 
+            "exercise_duration" : data["exerciseDuration"],
+            "exercise_type"     : data["exerciseType"],
+            "calories_burnt"    : data["caloriesBurnt"],
             })
         return jsonify({"success": True, "error": None}), 202
     except Exception as e:
