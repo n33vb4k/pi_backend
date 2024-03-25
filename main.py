@@ -1,4 +1,5 @@
-from flask import Flask, request, jsonify
+# ---------------------------------config------------------------------
+from flask import Flask, request, jsonify, redirect
 from flask_cors import CORS
 from pymongo import MongoClient
 import certifi
@@ -16,7 +17,7 @@ glucoseC    = db["GlucoseDB"]          #username (str, FK), glucoseLevel (float)
 nutritionC  = db["NutritionDB"]        #username (str, FK), foodName (str), quantity (float), calories(int)
 exerciseC   = db["ExerciseDB"]         #username (str, FK), exerciseName (str), quantity (int), caloriesBurnt(int),  exerciseType(string)
 
-# ---------------------------------config------------------------------
+# ---------------------------------routes------------------------------
 
 
 @app.route("/username-exists", methods = ["POST"])
@@ -46,18 +47,28 @@ def login():
             return jsonify({
                 "success": True,
                 "message": "Login successful",
-                "token": str(uuid4())
+                "token"  : str(uuid4())
             }), 200
         else:
             return jsonify({"success": False, "message": "Login failed"}), 201
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)})
+        return jsonify({"success": False, "error": str(e)}), 401
     
 
 
 @app.route("/register", methods = ["POST"])
 def register():
-    pass
+    data = request.get_json()
+    try:
+        insert = userLoginsC.insert_one({
+            "username"  : data["username"],
+            "email"     : data["email"], 
+            "password"  : data["password"]
+            })
+        return jsonify({"success": True, "message": "user added"}), 200
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e) }), 400
+    
 
 
 @app.route("/glucose", methods=["POST"])
