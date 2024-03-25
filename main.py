@@ -66,9 +66,9 @@ def post_blood_sugar_data():
     try:
         insert = glucoseC.insert_one({
             "username"      : data["username"],
-            "description"   : data["description"],
             "glucose_level" : data["glucoseLevel"], 
             "date_time"     : data["dateTime"],
+            "description"   : data["description"]
             })
         return jsonify({"success": True, "error": None}), 200
     except Exception as e:
@@ -81,10 +81,11 @@ def post_food_data():
     #check if calories are null, then use API to calculate the calories
     try:
         insert = nutritionC.insert_one({
-            "username" : data["username"],
-            "food_name": data["foodName"],
-            "quantitiy": data["quantity"], 
-            "calories" : data["calories"],
+            "username"  : data["username"],
+            "food_name" : data["foodName"], 
+            "quantitiy" : data["quantity"], 
+            "calories"  : data["calories"],
+            "date_time" : data["dateTime"]
             })
         return jsonify({"success": True, "error": None}), 201
     except Exception as e:
