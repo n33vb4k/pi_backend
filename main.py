@@ -1,5 +1,5 @@
 # ---------------------------------config------------------------------
-from flask import Flask, request, jsonify, redirect
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 from pymongo import MongoClient
 import certifi
@@ -86,6 +86,7 @@ def post_blood_sugar_data():
     except Exception as e:
         return jsonify({"success": False, "error": str(e) }), 400
 
+
 @app.route("/glucose", methods = ["GET"])
 def get_blood_sugar_data():
     username = request.args.get("username")
@@ -102,11 +103,16 @@ def get_blood_sugar_data():
             start_time -= timedelta(weeks=52)
 
     try:
-        search = glucoseC.find({"username" : username,
-                   "date-time": {'$gte': start_time}})
+        search = glucoseC.find({"username"        : username,
+                                "date-time"       : {'$gte': start_time}}, 
+                                {"_id"            :0,  #setting to 0 - wont appear in output
+                                 "username"       :0, 
+                                "description"     :0
+                                })
+        
         return jsonify({"success": True, "values":str(list(search))}), 200 #fix return type soon
     except Exception as e:
-        return jsonify({"success": False, "error": str(e) })
+        return jsonify({"success": False, "error": str(e) }), 401
 
 
 @app.route("/nutrition", methods=["POST"])
