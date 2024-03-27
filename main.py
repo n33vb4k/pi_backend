@@ -4,6 +4,7 @@ from flask_cors import CORS
 from pymongo import MongoClient
 import certifi
 import os
+from datetime import datetime, timedelta
 from uuid import uuid4
 
 app = Flask(__name__)
@@ -78,13 +79,35 @@ def post_blood_sugar_data():
         insert = glucoseC.insert_one({
             "username"      : data["username"],
             "glucose_level" : data["glucoseLevel"], 
-            "date_time"     : data["dateTime"],
+            "date_time"     : data["dateTime"], #make into a datetime object
             "description"   : data["description"]
             })
         return jsonify({"success": True, "error": None}), 200
     except Exception as e:
         return jsonify({"success": False, "error": str(e) }), 400
-    
+
+@app.route("/glucose", methods = ["GET"])
+def get_blood_sugar_data():
+    username = request.args.get("username")
+    time_span = request.args.get("timeSpan") #day week month or year
+    start_time = datetime.now()
+    match time_span:
+        case "day":
+            start_time -= timedelta(days=1)
+        case "week":
+            start_time -= timedelta(weeks=1)
+        case "month":
+            start_time -= timedelta(weeks=4)
+        case "year":
+            start_time -= timedelta(weeks=52)
+
+    try:
+        search = glucoseC.find({"username" : username,
+                   "date-time": {'$gte': start_time}})
+        return jsonify({"success": True, "values":str(list(search))}), 200 #fix return type soon
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e) })
+
 
 @app.route("/nutrition", methods=["POST"])
 def post_food_data():
