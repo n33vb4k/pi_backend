@@ -110,7 +110,7 @@ def get_blood_sugar_data():
                                 "description"     :0
                                 })
         
-        return jsonify({"success": True, "values":list(search)}), 200 #fix return type soon
+        return jsonify({"success": True, "values":list(search)}), 200
     except Exception as e:
         return jsonify({"success": False, "error": str(e) }), 401
 
