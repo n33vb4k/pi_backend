@@ -6,11 +6,14 @@ import certifi
 import os
 from datetime import datetime, timedelta
 from uuid import uuid4
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 
-cluster = MongoClient(os.environ["URL"], tlsCAFile=certifi.where())
+cluster = MongoClient(os.getenv('URL'), tlsCAFile=certifi.where())
 
 db          = cluster["ProjectDB"]
 userLoginsC = db["UserLoginDB"]        #Username (str, PK), Email (str), Password(str)
