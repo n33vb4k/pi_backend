@@ -18,8 +18,8 @@ cluster = MongoClient(os.getenv('URL'), tlsCAFile=certifi.where())
 db          = cluster["ProjectDB"]
 userLoginsC = db["UserLoginDB"]        #Username (str, PK), Email (str), Password(str)
 glucoseC    = db["GlucoseDB"]          #username (str, FK), glucoseLevel (float), datetime (time), description(string)
-nutritionC  = db["NutritionDB"]        #username (str, FK), foodName (str), quantity (float), calories(int)
-exerciseC   = db["ExerciseDB"]         #username (str, FK), exerciseName (str), quantity (int), caloriesBurnt(int),  exerciseType(string)
+nutritionC  = db["NutritionDB"]        #username (str, FK), foodName (str), quantity(float), datetime(time), calories(int)
+exerciseC   = db["ExerciseDB"]         #username (str, FK), exerciseName (str), quantity (int), caloriesBurnt(int),  exerciseType(string), datetime(time)
 
 # ---------------------------------routes------------------------------
 
@@ -78,11 +78,12 @@ def register():
 @app.route("/glucose", methods=["POST"])
 def post_blood_sugar_data():
     data = request.get_json()
+    datetime_object = datetime.fromisoformat(data["dateTime"])
     try:
         insert = glucoseC.insert_one({
             "username"      : data["username"],
             "glucose_level" : data["glucoseLevel"], 
-            "date_time"     : data["dateTime"], #make into a datetime object
+            "date_time"     : datetime_object,
             "description"   : data["description"]
             })
         return jsonify({"success": True, "error": None}), 200
@@ -110,7 +111,6 @@ def get_blood_sugar_data():
                                 "date-time"       : {'$gte': start_time}}, 
                                 {"_id"            :0,  #setting to 0 - wont appear in output
                                  "username"       :0, 
-                                "description"     :0
                                 })
         
         return jsonify({"success": True, "values":list(search)}), 200
@@ -121,6 +121,7 @@ def get_blood_sugar_data():
 @app.route("/nutrition", methods=["POST"])
 def post_food_data():
     data = request.get_json()
+    datetime_object = datetime.fromisoformat(data["dateTime"])
     #check if calories are null, then use API to calculate the calories
     try:
         insert = nutritionC.insert_one({
@@ -128,7 +129,7 @@ def post_food_data():
             "food_name" : data["foodName"], 
             "quantitiy" : data["quantity"], 
             "calories"  : data["calories"],
-            "date_time" : data["dateTime"]
+            "date_time" : datetime_object
             })
         return jsonify({"success": True, "error": None}), 201
     except Exception as e:
@@ -136,9 +137,36 @@ def post_food_data():
         return jsonify({"success": False, "error": str(e) }), 401
 
 
+@app.route("/nutrition", methods = ["GET"])
+def get_food_data():
+    username = request.args.get("username")
+    time_span = request.args.get("timeSpan")
+    start_time = datetime.now()
+    match time_span:
+        case "day":
+            start_time -= timedelta(days=1)
+        case "week":
+            start_time -= timedelta(weeks=1)
+        case "month":
+            start_time -= timedelta(weeks=4)
+        case "year":
+            start_time -= timedelta(weeks=52)
+    
+    try:
+        search = nutritionC.find({"username"      : username,
+                                "date-time"       : {'$gte': start_time}}, 
+                                {"_id"            :0,
+                                 "username"       :0, 
+                                })
+        return jsonify({"success": True, "values":list(search)}), 200
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e) }), 401
+
+
 @app.route("/exercise", methods=["POST"])
 def post_exercise_data():
     data = request.get_json()
+    datetime_object = datetime.fromisoformat(data["dateTime"])
     #check if caloriesBurnt is null, then use api to calculate 
     try:
         insert = exerciseC.insert_one({
@@ -147,11 +175,37 @@ def post_exercise_data():
             "duration"       : data["duration"], 
             "calories_burnt" : data["caloriesBurnt"],
             "exercise_type"  : data["exerciseType"],
-            "date_time"      : data["dateTime"],
+            "date_time"      : datetime_object,
             })
         return jsonify({"success": True, "error": None}), 202
     except Exception as e:
         print(e)
+        return jsonify({"success": False, "error": str(e) }), 402
+
+
+@app.route("/exercise", methods = ["GET"])
+def get_exercise_data():
+    username = request.args.get("username")
+    time_span = request.args.get("timeSpan")
+    start_time = datetime.now()
+    match time_span:
+        case "day":
+            start_time -= timedelta(days=1)
+        case "week":
+            start_time -= timedelta(weeks=1)
+        case "month":
+            start_time -= timedelta(weeks=4)
+        case "year":
+            start_time -= timedelta(weeks=52)
+    
+    try:
+        search = exerciseC.find({"username"       : username,
+                                "date-time"       : {'$gte': start_time}}, 
+                                {"_id"            :0,
+                                 "username"       :0, 
+                                })
+        return jsonify({"success": True, "values":list(search)}), 201
+    except Exception as e:
         return jsonify({"success": False, "error": str(e) }), 402
 
 
