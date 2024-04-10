@@ -81,14 +81,18 @@ def register():
     data = request.get_json()
     print("hashing password")
     hashed_password = bcrypt.hashpw(str(data["password"]).encode(), bcrypt.gensalt(12))
-    
+
     try:
         insert = userLoginsC.insert_one({
             "username"  : data["username"],
             "email"     : data["email"], 
             "password"  : hashed_password.decode()
         })
-        return jsonify({"success": True, "message": "user added"}), 200
+        return jsonify({
+            "success": True,
+            "message": "user added",
+            "token": str(uuid4())
+        }), 200
     except Exception as e:
         print(e)
         return jsonify({"success": False, "error": str(e) }), 400
