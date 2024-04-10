@@ -7,6 +7,7 @@ import os
 from datetime import datetime, timedelta
 from uuid import uuid4
 from dotenv import load_dotenv
+import bcrypt
 
 load_dotenv()
 
@@ -44,18 +45,33 @@ def login():
     data = request.get_json()
     try:
         check = userLoginsC.find_one({
-            "username" : data["username"],
-            "password" : data["password"]
+            "username" : data["username"]
         })
-        if check and len(check) != 0:
-            return jsonify({
-                "success": True,
-                "message": "Login successful",
-                "token"  : str(uuid4())
-            }), 200
+        print(check)
+        if not check or len(check) == 0:
+            print("No user found")
+            return jsonify({"success": False, "error": str(e)}), 401
         else:
-            return jsonify({"success": False, "message": "Login failed"}), 201
+
+            hashed_password = str(check["password"]).encode()
+            print(hashed_password)
+
+            comparison = bcrypt.checkpw(str(data["password"]).encode(), hashed_password)
+
+
+            if comparison:
+                print("Password correct")
+                return jsonify({
+                    "success": True,
+                    "message": "Login successful",
+                    "token"  : str(uuid4())
+                }), 200
+            
+            else:
+                print("Password")
+                return jsonify({"success": False, "message": "Login failed"}), 201
     except Exception as e:
+        print(e)
         return jsonify({"success": False, "error": str(e)}), 401
     
 
@@ -63,14 +79,18 @@ def login():
 @app.route("/register", methods = ["POST"])
 def register():
     data = request.get_json()
+    print("hashing password")
+    hashed_password = bcrypt.hashpw(str(data["password"]).encode(), bcrypt.gensalt(12))
+    
     try:
         insert = userLoginsC.insert_one({
             "username"  : data["username"],
             "email"     : data["email"], 
-            "password"  : data["password"]
-            })
+            "password"  : hashed_password.decode()
+        })
         return jsonify({"success": True, "message": "user added"}), 200
     except Exception as e:
+        print(e)
         return jsonify({"success": False, "error": str(e) }), 400
     
 
