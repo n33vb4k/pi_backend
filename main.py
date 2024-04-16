@@ -24,6 +24,20 @@ exerciseC   = db["ExerciseDB"]         #username (str, FK), exerciseName (str), 
 
 # ---------------------------------routes------------------------------
 
+@app.route("/get-food-macros", methods = ["GET"])
+def get_nutrition():
+    data = request.get_json()
+    try:
+        foodName = data["foodName"]
+        response = requests.get(f"https://api.api-ninjas.com/v1/nutrition?query={foodName}", headers={"X-Api-Key": "nQjzGP7PAqn9meZuXO4FNQ==9otkCayUm9ju0N1Q"})
+        try:
+            return jsonify({"success": True} | response.json()[0]), 200
+        except Exception as e:
+            return jsonify({"success": False, "error": f"{foodName} does not exist"})
+    
+    except Exception as e:
+        return jsonify({"success": False, "error": e})
+
 
 @app.route("/username-exists", methods = ["POST"])
 def check_user():
