@@ -150,7 +150,7 @@ def post_food_data():
     try:
         food_name = data["foodName"]
         quantity = data["quantity"]
-        macros = get_macros(food_name, quantity)
+        macros = calculate_macros(food_name, quantity)
 
         if macros:
             food_info = {
@@ -212,7 +212,7 @@ def get_food_data():
         return jsonify({"success": False, "error": str(e) }), 401
 
 
-def get_macros(food_name, quantity):
+def calculate_macros(food_name, quantity):
     if quantity[-1] == "g":
         quantity = quantity[:-1]
     param = f"{quantity}g {food_name}"
@@ -246,7 +246,7 @@ def post_exercise_data():
     try:
         exercise_name = data["exerciseName"]
         duration = data["duration"]
-        info = get_calories_burnt(exercise_name, duration)
+        info = calculate_calories_burnt(exercise_name, duration)
         if info:
             calories_burnt = data["caloriesBurnt"] if data["caloriesBurnt"] else info["total_calories"]
         else:
@@ -292,7 +292,7 @@ def get_exercise_data():
         return jsonify({"success": False, "error": str(e) }), 402
 
 
-def get_calories_burnt(exercise_name, duration):
+def calculate_calories_burnt(exercise_name, duration):
     response = requests.get(f"https://api.api-ninjas.com/v1/caloriesburned?activity={exercise_name}&duration={duration}", headers={"X-Api-Key": "nQjzGP7PAqn9meZuXO4FNQ==9otkCayUm9ju0N1Q"})
     try:
         json = response.json()[0]
