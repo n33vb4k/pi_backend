@@ -23,6 +23,9 @@ glucoseC    = db["GlucoseDB"]          #username (str, FK), glucoseLevel (float)
 nutritionC  = db["NutritionDB"]        #username (str, FK), foodName (str), quantity(float), datetime(time), calories(int)
 exerciseC   = db["ExerciseDB"]         #username (str, FK), exerciseName (str), quantity (int), caloriesBurnt(int),  exerciseType(string), datetime(time)
 
+
+AUTOCOMPLETE_APP_ID = os.getenv('AUTOCOMPLETE_FOOD_APP_ID')
+AUTOCOMPLETE_APP_KEY = os.getenv('AUTOCOMPLETE_FOOD_APP_KEY')
 # ---------------------------------routes------------------------------
 
 
@@ -304,7 +307,7 @@ def calculate_calories_burnt(exercise_name, duration):
 @app.route("/autocomplete_food", methods = ['GET'])
 def get_autocomplete_food():
     partial_food = request.args.get('q')
-    url = f'https://api.edamam.com/auto-complete?app_id={os.getenv('AUTOCOMPLETE_FOOD_APP_ID')}&app_key={os.getenv('AUTOCOMPLETE_FOOD_APP_KEY')}&q={partial_food}'
+    url = f"https://api.edamam.com/auto-complete?app_id={AUTOCOMPLETE_APP_ID}&app_key={AUTOCOMPLETE_APP_KEY}&q={partial_food}"
     response = requests.get(url)
     print(response.json())
     try:
