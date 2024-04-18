@@ -147,19 +147,43 @@ def get_blood_sugar_data():
 def post_food_data():
     data = request.get_json()
     datetime_object = datetime.fromisoformat(data["dateTime"])
-    #check if calories are null, then use API to calculate the calories
     try:
+        food_name = data["foodName"]
+        quantity = data["quantity"]
+        macros = get_macros(food_name, quantity)
+
+        if macros:
+            food_info = {
+                "calories"       : data["calories"] if data["calories"] else macros["calories"],
+                "carbs_g"        : macros["carbohydrates_total_g"],
+                "fat_saturated_g": macros["fat_saturated_g"],
+                "fat_total_g"    : macros["fat_total_g"],
+                "cholesterol_mg" : macros["cholesterol_mg"],
+                "fiber_g"        : macros["fiber_g"],
+                "potassium_mg"   : macros["potassium_mg"],
+                "protein_g"      : macros["protein_g"],
+                "sodium_mg"      : macros["sodium_mg"],
+                "sugar_g"        : macros["sugar_g"]
+            }
+        else:
+            food_info = {key: None for key in [
+                "calories", "carbs_g", "fat_saturated_g",
+                "fat_total_g", "cholesterol_mg", "fiber_g",
+                "potassium_mg", "protein_g", "sodium_mg", "sugar_g"
+            ]}
+            food_info["calories"] = data["calories"]
+
         insert = nutritionC.insert_one({
-            "username"  : data["username"],
-            "food_name" : data["foodName"], 
-            "quantitiy" : data["quantity"], 
-            "calories"  : data["calories"],
-            "date_time" : datetime_object
-            })
-        return jsonify({"success": True, "error": None}), 201
+            "username": data["username"],
+            "date_time": datetime_object,
+            "food_name": food_name,
+            "quantitiy": f"{quantity}g" if quantity[-1] != "g" else quantity,
+            **food_info
+        })
+
+        return jsonify({"success": True, "error": None if macros else "Food not found"}), 201 if macros else 202
     except Exception as e:
-        print(e)
-        return jsonify({"success": False, "error": str(e) }), 401
+        return jsonify({"success": False, "error": str(e)}), 401
 
 
 @app.route("/nutrition", methods = ["GET"])
@@ -188,6 +212,18 @@ def get_food_data():
         return jsonify({"success": False, "error": str(e) }), 401
 
 
+def get_macros(food_name, quantity):
+    if quantity[-1] == "g":
+        quantity = quantity[:-1]
+    param = f"{quantity}g {food_name}"
+    response = requests.get(f"https://api.api-ninjas.com/v1/nutrition?query={param}", headers={"X-Api-Key": "nQjzGP7PAqn9meZuXO4FNQ==9otkCayUm9ju0N1Q"})
+    try:
+        json = response.json()[0]
+        return json
+    except Exception as e:
+        return None
+
+
 @app.route("/get-food-macros", methods = ["GET"])
 def get_nutrition():
     data = request.get_json()
@@ -195,7 +231,7 @@ def get_nutrition():
         food_name = data["foodName"] #quantity in grams and food name
         response = requests.get(f"https://api.api-ninjas.com/v1/nutrition?query={food_name}", headers={"X-Api-Key": "nQjzGP7PAqn9meZuXO4FNQ==9otkCayUm9ju0N1Q"})
         try:
-            return jsonify({"success": True} | response.json()[0]), 200
+            return jsonify({"success": True}, response.json()[0]), 200
         except Exception as e:
             return jsonify({"success": False, "error": f"{food_name} does not exist"})
     
