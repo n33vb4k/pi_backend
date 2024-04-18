@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from uuid import uuid4
 from dotenv import load_dotenv
 import bcrypt
+import requests
 
 load_dotenv()
 
@@ -23,20 +24,6 @@ nutritionC  = db["NutritionDB"]        #username (str, FK), foodName (str), quan
 exerciseC   = db["ExerciseDB"]         #username (str, FK), exerciseName (str), quantity (int), caloriesBurnt(int),  exerciseType(string), datetime(time)
 
 # ---------------------------------routes------------------------------
-
-@app.route("/get-food-macros", methods = ["GET"])
-def get_nutrition():
-    data = request.get_json()
-    try:
-        foodName = data["foodName"]
-        response = requests.get(f"https://api.api-ninjas.com/v1/nutrition?query={foodName}", headers={"X-Api-Key": "nQjzGP7PAqn9meZuXO4FNQ==9otkCayUm9ju0N1Q"})
-        try:
-            return jsonify({"success": True} | response.json()[0]), 200
-        except Exception as e:
-            return jsonify({"success": False, "error": f"{foodName} does not exist"})
-    
-    except Exception as e:
-        return jsonify({"success": False, "error": e})
 
 
 @app.route("/username-exists", methods = ["POST"])
@@ -199,6 +186,22 @@ def get_food_data():
         return jsonify({"success": True, "values":list(search)}), 200
     except Exception as e:
         return jsonify({"success": False, "error": str(e) }), 401
+
+
+@app.route("/get-food-macros", methods = ["GET"])
+def get_nutrition():
+    data = request.get_json()
+    try:
+        food_name = data["foodName"] #quantity in grams and food name
+        response = requests.get(f"https://api.api-ninjas.com/v1/nutrition?query={food_name}", headers={"X-Api-Key": "nQjzGP7PAqn9meZuXO4FNQ==9otkCayUm9ju0N1Q"})
+        try:
+            return jsonify({"success": True} | response.json()[0]), 200
+        except Exception as e:
+            return jsonify({"success": False, "error": f"{food_name} does not exist"})
+    
+    except Exception as e:
+        return jsonify({"success": False, "error": e})
+
 
 
 @app.route("/exercise", methods=["POST"])

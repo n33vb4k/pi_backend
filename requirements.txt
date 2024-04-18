@@ -4,3 +4,4 @@ flask_cors
 certifi
 python-dotenv
 bcrypt
+requests
