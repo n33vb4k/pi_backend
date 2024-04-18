@@ -301,6 +301,19 @@ def calculate_calories_burnt(exercise_name, duration):
         return None
 
 
+@app.route("/autocomplete_food", methods = ['GET'])
+def get_autocomplete_food():
+    partial_food = request.args.get('q')
+    url = f'https://api.edamam.com/auto-complete?app_id={os.getenv('AUTOCOMPLETE_FOOD_APP_ID')}&app_key={os.getenv('AUTOCOMPLETE_FOOD_APP_KEY')}&q={partial_food}'
+    response = requests.get(url)
+    print(response.json())
+    try:
+        print(response.json())
+        return jsonify({"success": True}, response.json()), 200
+    except Exception as e:
+        return jsonify({"success": False, "error": e}), 402
+
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=10000,debug=True)
 
