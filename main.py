@@ -134,7 +134,7 @@ def get_blood_sugar_data():
     try:
         search = glucoseC.find({"username"        : username,
                                 "date-time"       : {'$gte': start_time}}, 
-                                {"_id"            :0,  #setting to 0 - wont appear in output
+                                {"_id"            :0,  #setting to 0 so wont appear in output
                                  "username"       :0, 
                                 })
         
@@ -239,25 +239,31 @@ def get_nutrition():
         return jsonify({"success": False, "error": e})
 
 
-
 @app.route("/exercise", methods=["POST"])
 def post_exercise_data():
     data = request.get_json()
     datetime_object = datetime.fromisoformat(data["dateTime"])
-    #check if caloriesBurnt is null, then use api to calculate 
     try:
+        exercise_name = data["exerciseName"]
+        duration = data["duration"]
+        info = get_calories_burnt(exercise_name, duration)
+        if info:
+            calories_burnt = data["caloriesBurnt"] if data["caloriesBurnt"] else info["total_calories"]
+        else:
+            calories_burnt = data["caloriesBurnt"]
+    
         insert = exerciseC.insert_one({
             "username"       : data["username"],
+            "date_time"      : datetime_object,
             "exercise_name"  : data["exerciseName"], 
             "duration"       : data["duration"], 
-            "calories_burnt" : data["caloriesBurnt"],
+            "calories_burnt" : calories_burnt,
             "exercise_type"  : data["exerciseType"],
-            "date_time"      : datetime_object,
             })
-        return jsonify({"success": True, "error": None}), 202
+        return jsonify({"success": True, "error": None if info else "Exercise not found"}), 201 if info else 202
     except Exception as e:
         print(e)
-        return jsonify({"success": False, "error": str(e) }), 402
+        return jsonify({"success": False, "error": str(e), "info" : info}), 402
 
 
 @app.route("/exercise", methods = ["GET"])
@@ -284,6 +290,15 @@ def get_exercise_data():
         return jsonify({"success": True, "values":list(search)}), 201
     except Exception as e:
         return jsonify({"success": False, "error": str(e) }), 402
+
+
+def get_calories_burnt(exercise_name, duration):
+    response = requests.get(f"https://api.api-ninjas.com/v1/caloriesburned?activity={exercise_name}&duration={duration}", headers={"X-Api-Key": "nQjzGP7PAqn9meZuXO4FNQ==9otkCayUm9ju0N1Q"})
+    try:
+        json = response.json()[0]
+        return json
+    except Exception as e:
+        return None
 
 
 if __name__ == "__main__":
