@@ -224,21 +224,6 @@ def calculate_macros(food_name, quantity):
         return None
 
 
-@app.route("/get-food-macros", methods = ["GET"])
-def get_nutrition():
-    data = request.get_json()
-    try:
-        food_name = data["foodName"] #quantity in grams and food name
-        response = requests.get(f"https://api.api-ninjas.com/v1/nutrition?query={food_name}", headers={"X-Api-Key": "nQjzGP7PAqn9meZuXO4FNQ==9otkCayUm9ju0N1Q"})
-        try:
-            return jsonify({"success": True}, response.json()[0]), 200
-        except Exception as e:
-            return jsonify({"success": False, "error": f"{food_name} does not exist"})
-    
-    except Exception as e:
-        return jsonify({"success": False, "error": e})
-
-
 @app.route("/exercise", methods=["POST"])
 def post_exercise_data():
     data = request.get_json()
