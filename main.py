@@ -22,6 +22,7 @@ userLoginsC = db["UserLoginDB"]        #Username (str, PK), Email (str), Passwor
 glucoseC    = db["GlucoseDB"]          #username (str, FK), glucoseLevel (float), datetime (time), description(string)
 nutritionC  = db["NutritionDB"]        #username (str, FK), foodName (str), quantity(float), datetime(time), calories(int)
 exerciseC   = db["ExerciseDB"]         #username (str, FK), exerciseName (str), quantity (int), caloriesBurnt(int),  exerciseType(string), datetime(time)
+goalsC      = db["GoalsGB"]            #username (str, FK), goalType (str), goal(int), dateSet(time)
 
 
 AUTOCOMPLETE_APP_ID = os.getenv('AUTOCOMPLETE_FOOD_APP_ID')
@@ -33,7 +34,7 @@ AUTOCOMPLETE_APP_KEY = os.getenv('AUTOCOMPLETE_FOOD_APP_KEY')
 def check_user():
     data = request.get_json()
     try:
-        check = userLoginsC.find_one({  
+        check = userLoginsC.find_one({
             "username" : data["username"]
         })
         if check and len(check) != 0:
@@ -42,7 +43,7 @@ def check_user():
             return jsonify({"success": True, "message": "User not found, please register"}), 201
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
-    
+
 
 @app.route("/login" , methods = ["POST"])
 def login():
@@ -70,14 +71,14 @@ def login():
                     "message": "Login successful",
                     "token"  : str(uuid4())
                 }), 200
-            
+
             else:
                 print("Password")
                 return jsonify({"success": False, "message": "Login failed"}), 201
     except Exception as e:
         print(e)
         return jsonify({"success": False, "error": str(e)}), 401
-    
+
 
 
 @app.route("/register", methods = ["POST"])
@@ -89,7 +90,7 @@ def register():
     try:
         insert = userLoginsC.insert_one({
             "username"  : data["username"],
-            "email"     : data["email"], 
+            "email"     : data["email"],
             "password"  : hashed_password.decode()
         })
         return jsonify({
@@ -100,7 +101,7 @@ def register():
     except Exception as e:
         print(e)
         return jsonify({"success": False, "error": str(e) }), 400
-    
+
 
 
 @app.route("/glucose", methods=["POST"])
@@ -110,7 +111,7 @@ def post_blood_sugar_data():
     try:
         insert = glucoseC.insert_one({
             "username"      : data["username"],
-            "glucose_level" : data["glucoseLevel"], 
+            "glucose_level" : data["glucoseLevel"],
             "date_time"     : datetime_object,
             "description"   : data["description"]
             })
@@ -136,11 +137,11 @@ def get_blood_sugar_data():
 
     try:
         search = glucoseC.find({"username"        : username,
-                                "date-time"       : {'$gte': start_time}}, 
+                                "date-time"       : {'$gte': start_time}},
                                 {"_id"            :0,  #setting to 0 so wont appear in output
-                                 "username"       :0, 
+                                 "username"       :0,
                                 })
-        
+
         return jsonify({"success": True, "values":list(search)}), 200
     except Exception as e:
         return jsonify({"success": False, "error": str(e) }), 401
@@ -203,12 +204,12 @@ def get_food_data():
             start_time -= timedelta(weeks=4)
         case "year":
             start_time -= timedelta(weeks=52)
-    
+
     try:
         search = nutritionC.find({"username"      : username,
-                                "date-time"       : {'$gte': start_time}}, 
+                                "date-time"       : {'$gte': start_time}},
                                 {"_id"            :0,
-                                 "username"       :0, 
+                                 "username"       :0,
                                 })
         return jsonify({"success": True, "values":list(search)}), 200
     except Exception as e:
@@ -237,7 +238,7 @@ def get_nutrition():
             return jsonify({"success": True}, response.json()[0]), 200
         except Exception as e:
             return jsonify({"success": False, "error": f"{food_name} does not exist"})
-    
+
     except Exception as e:
         return jsonify({"success": False, "error": e})
 
@@ -254,12 +255,12 @@ def post_exercise_data():
             calories_burnt = data["caloriesBurnt"] if data["caloriesBurnt"] else info["total_calories"]
         else:
             calories_burnt = data["caloriesBurnt"]
-    
+
         insert = exerciseC.insert_one({
             "username"       : data["username"],
             "date_time"      : datetime_object,
-            "exercise_name"  : data["exerciseName"], 
-            "duration"       : data["duration"], 
+            "exercise_name"  : data["exerciseName"],
+            "duration"       : data["duration"],
             "calories_burnt" : calories_burnt,
             "exercise_type"  : data["exerciseType"],
             })
@@ -283,12 +284,12 @@ def get_exercise_data():
             start_time -= timedelta(weeks=4)
         case "year":
             start_time -= timedelta(weeks=52)
-    
+
     try:
         search = exerciseC.find({"username"       : username,
-                                "date-time"       : {'$gte': start_time}}, 
+                                "date-time"       : {'$gte': start_time}},
                                 {"_id"            :0,
-                                 "username"       :0, 
+                                 "username"       :0,
                                 })
         return jsonify({"success": True, "values":list(search)}), 201
     except Exception as e:
@@ -317,6 +318,45 @@ def get_autocomplete_food():
         return jsonify({"success": False, "error": e}), 402
 
 
+@app.route("/goal", methods = ["GET"])
+def get_goal():
+    user_id = request.args.get("username")
+    goal_type = request.args.get("goalType")
+
+    if (goal_type not in ["nutrition", "exercise", "glucose"]):
+        return jsonify({"success": False, "error": "Invalid goal type"}), 402
+
+    try:
+        goal = goalsC.find_one({
+            "username" : user_id,
+            "goal_type": goal_type
+        }, sort=[('dateSet', -1)])
+
+        if goal:
+            return jsonify({"success": True, "value": goal["goal"]}), 200
+        else:
+            return jsonify({"success": False, "error": "No goal found"}), 402
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 402
+
+@app.route("/goal", methods = ["POST"])
+def set_goal():
+    data = request.get_json()
+
+    user_id = data["username"]
+    goal_type = data["goalType"]
+    goal = data["goal"]
+
+    try:
+        goalsC.insert_one({
+            "username" : user_id,
+            "goal_type": goal_type,
+            "goal"     : goal,
+            "dateSet"  : datetime.now()
+        })
+        return jsonify({"success": True}), 201
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 402
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=10000,debug=True)
-
