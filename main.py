@@ -22,7 +22,7 @@ userLoginsC = db["UserLoginDB"]        #Username (str, PK), Email (str), Passwor
 glucoseC    = db["GlucoseDB"]          #username (str, FK), glucoseLevel (float), datetime (time), description(string)
 nutritionC  = db["NutritionDB"]        #username (str, FK), foodName (str), quantity(float), datetime(time), calories(int)
 exerciseC   = db["ExerciseDB"]         #username (str, FK), exerciseName (str), quantity (int), caloriesBurnt(int),  exerciseType(string), datetime(time)
-goalsC      = db["GoalsGB"]            #username (str, FK), goalType (str), goal(int), dateSet(time)
+goalsC      = db["GoalsDB"]            #username (str, FK), goalType (str), goal(int), dateSet(time)
 
 
 AUTOCOMPLETE_APP_ID = os.getenv('AUTOCOMPLETE_FOOD_APP_ID')
@@ -228,21 +228,6 @@ def calculate_macros(food_name, quantity):
         return None
 
 
-@app.route("/get-food-macros", methods = ["GET"])
-def get_nutrition():
-    data = request.get_json()
-    try:
-        food_name = data["foodName"] #quantity in grams and food name
-        response = requests.get(f"https://api.api-ninjas.com/v1/nutrition?query={food_name}", headers={"X-Api-Key": "nQjzGP7PAqn9meZuXO4FNQ==9otkCayUm9ju0N1Q"})
-        try:
-            return jsonify({"success": True}, response.json()[0]), 200
-        except Exception as e:
-            return jsonify({"success": False, "error": f"{food_name} does not exist"})
-
-    except Exception as e:
-        return jsonify({"success": False, "error": e})
-
-
 @app.route("/exercise", methods=["POST"])
 def post_exercise_data():
     data = request.get_json()
@@ -339,6 +324,7 @@ def get_goal():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 402
 
+
 @app.route("/goal", methods = ["POST"])
 def set_goal():
     data = request.get_json()
@@ -346,6 +332,9 @@ def set_goal():
     user_id = data["username"]
     goal_type = data["goalType"]
     goal = data["goal"]
+
+    if (goal_type not in ["nutrition", "exercise", "glucose"]):
+        return jsonify({"success": False, "error": "Invalid goal type"}), 402
 
     try:
         goalsC.insert_one({
@@ -357,6 +346,57 @@ def set_goal():
         return jsonify({"success": True}), 201
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 402
+
+
+@app.route("/goal_progress", methods = ["GET"])
+def check_goal_progress(goal_type, goal, username):
+    #goal should be in the format "target(2000) field(e.g nutrition) time_span(day/week/month/year)"
+    goal_type = data["goalType"]
+    goal = data["goal"]
+    username = data["username"]
+
+    try:
+        temp = goal.split(" ")
+        target = int(temp[0])
+        field = temp[1]
+        time_span = temp[2]
+    except Exception as e:
+        return jsonify({"success": False, "error": "Invalid goal format"}), 402
+
+    match goal_type:
+        case "nutrition":
+            collection = nutritionC
+        case "exercise": 
+            collection = exerciseC
+        case "glucose":
+            collection = glucoseC
+     
+    match time_span:
+        case "day":
+            start_time = datetime.now() - timedelta(days=1)
+        case "week":
+            start_time = datetime.now() - timedelta(weeks=1)
+        case "month":
+            start_time = datetime.now() - timedelta(weeks=4)
+        case "year":
+            start_time = datetime.now() - timedelta(weeks=52)
+
+    start_time = datetime.now() - timedelta(days=1)
+
+    try:
+        data = collection.find({
+            "username": username,
+            "date-time": {'$gte': start_time}
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 402
+
+    current = 0
+    for entry in data:
+        current += entry[field]
+    
+    return jsonify({"success": True, "progress": current/target}), 200
+    
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=10000,debug=True)
