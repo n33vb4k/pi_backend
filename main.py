@@ -22,7 +22,11 @@ userLoginsC = db["UserLoginDB"]        #Username (str, PK), Email (str), Passwor
 glucoseC    = db["GlucoseDB"]          #username (str, FK), glucoseLevel (float), datetime (time), description(string)
 nutritionC  = db["NutritionDB"]        #username (str, FK), foodName (str), quantity(float), datetime(time), calories(int)
 exerciseC   = db["ExerciseDB"]         #username (str, FK), exerciseName (str), quantity (int), caloriesBurnt(int),  exerciseType(string), datetime(time)
+goalsC      = db["GoalsDB"]            #username (str, FK), goalType (str), goal(int), dateSet(time)
 
+
+AUTOCOMPLETE_APP_ID = os.getenv('AUTOCOMPLETE_FOOD_APP_ID')
+AUTOCOMPLETE_APP_KEY = os.getenv('AUTOCOMPLETE_FOOD_APP_KEY')
 # ---------------------------------routes------------------------------
 
 
@@ -30,7 +34,7 @@ exerciseC   = db["ExerciseDB"]         #username (str, FK), exerciseName (str), 
 def check_user():
     data = request.get_json()
     try:
-        check = userLoginsC.find_one({  
+        check = userLoginsC.find_one({
             "username" : data["username"]
         })
         if check and len(check) != 0:
@@ -39,7 +43,7 @@ def check_user():
             return jsonify({"success": True, "message": "User not found, please register"}), 201
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
-    
+
 
 @app.route("/login" , methods = ["POST"])
 def login():
@@ -67,14 +71,14 @@ def login():
                     "message": "Login successful",
                     "token"  : str(uuid4())
                 }), 200
-            
+
             else:
                 print("Password")
                 return jsonify({"success": False, "message": "Login failed"}), 201
     except Exception as e:
         print(e)
         return jsonify({"success": False, "error": str(e)}), 401
-    
+
 
 
 @app.route("/register", methods = ["POST"])
@@ -86,7 +90,7 @@ def register():
     try:
         insert = userLoginsC.insert_one({
             "username"  : data["username"],
-            "email"     : data["email"], 
+            "email"     : data["email"],
             "password"  : hashed_password.decode()
         })
         return jsonify({
@@ -97,7 +101,7 @@ def register():
     except Exception as e:
         print(e)
         return jsonify({"success": False, "error": str(e) }), 400
-    
+
 
 
 @app.route("/glucose", methods=["POST"])
@@ -107,7 +111,7 @@ def post_blood_sugar_data():
     try:
         insert = glucoseC.insert_one({
             "username"      : data["username"],
-            "glucose_level" : data["glucoseLevel"], 
+            "glucose_level" : data["glucoseLevel"],
             "date_time"     : datetime_object,
             "description"   : data["description"]
             })
@@ -133,11 +137,11 @@ def get_blood_sugar_data():
 
     try:
         search = glucoseC.find({"username"        : username,
-                                "date-time"       : {'$gte': start_time}}, 
+                                "date_time"       : {'$gte': start_time}},
                                 {"_id"            :0,  #setting to 0 so wont appear in output
-                                 "username"       :0, 
+                                 "username"       :0,
                                 })
-        
+
         return jsonify({"success": True, "values":list(search)}), 200
     except Exception as e:
         return jsonify({"success": False, "error": str(e) }), 401
@@ -200,12 +204,12 @@ def get_food_data():
             start_time -= timedelta(weeks=4)
         case "year":
             start_time -= timedelta(weeks=52)
-    
+
     try:
         search = nutritionC.find({"username"      : username,
-                                "date-time"       : {'$gte': start_time}}, 
+                                "date_time"       : {'$gte': start_time}},
                                 {"_id"            :0,
-                                 "username"       :0, 
+                                 "username"       :0,
                                 })
         return jsonify({"success": True, "values":list(search)}), 200
     except Exception as e:
@@ -224,21 +228,6 @@ def calculate_macros(food_name, quantity):
         return None
 
 
-@app.route("/get-food-macros", methods = ["GET"])
-def get_nutrition():
-    data = request.get_json()
-    try:
-        food_name = data["foodName"] #quantity in grams and food name
-        response = requests.get(f"https://api.api-ninjas.com/v1/nutrition?query={food_name}", headers={"X-Api-Key": "nQjzGP7PAqn9meZuXO4FNQ==9otkCayUm9ju0N1Q"})
-        try:
-            return jsonify({"success": True}, response.json()[0]), 200
-        except Exception as e:
-            return jsonify({"success": False, "error": f"{food_name} does not exist"})
-    
-    except Exception as e:
-        return jsonify({"success": False, "error": e})
-
-
 @app.route("/exercise", methods=["POST"])
 def post_exercise_data():
     data = request.get_json()
@@ -251,12 +240,12 @@ def post_exercise_data():
             calories_burnt = data["caloriesBurnt"] if data["caloriesBurnt"] else info["total_calories"]
         else:
             calories_burnt = data["caloriesBurnt"]
-    
+
         insert = exerciseC.insert_one({
             "username"       : data["username"],
             "date_time"      : datetime_object,
-            "exercise_name"  : data["exerciseName"], 
-            "duration"       : data["duration"], 
+            "exercise_name"  : data["exerciseName"],
+            "duration"       : data["duration"],
             "calories_burnt" : calories_burnt,
             "exercise_type"  : data["exerciseType"],
             })
@@ -280,12 +269,12 @@ def get_exercise_data():
             start_time -= timedelta(weeks=4)
         case "year":
             start_time -= timedelta(weeks=52)
-    
+
     try:
         search = exerciseC.find({"username"       : username,
-                                "date-time"       : {'$gte': start_time}}, 
+                                "date_time"       : {'$gte': start_time}},
                                 {"_id"            :0,
-                                 "username"       :0, 
+                                 "username"       :0,
                                 })
         return jsonify({"success": True, "values":list(search)}), 201
     except Exception as e:
@@ -304,7 +293,7 @@ def calculate_calories_burnt(exercise_name, duration):
 @app.route("/autocomplete_food", methods = ['GET'])
 def get_autocomplete_food():
     partial_food = request.args.get('q')
-    url = f'https://api.edamam.com/auto-complete?app_id={os.getenv('AUTOCOMPLETE_FOOD_APP_ID')}&app_key={os.getenv('AUTOCOMPLETE_FOOD_APP_KEY')}&q={partial_food}'
+    url = f"https://api.edamam.com/auto-complete?app_id={AUTOCOMPLETE_APP_ID}&app_key={AUTOCOMPLETE_APP_KEY}&q={partial_food}"
     response = requests.get(url)
     print(response.json())
     try:
@@ -314,6 +303,129 @@ def get_autocomplete_food():
         return jsonify({"success": False, "error": e}), 402
 
 
+@app.route("/goal", methods = ["GET"])
+def get_goal():
+    data = request.get_json()
+
+    username = data["username"]
+    goal_type = data["goalType"]
+    target = data["target"]
+    field = data["field"]
+    time_span = data["timeSpan"]
+
+    if (goal_type not in ["nutrition", "exercise", "glucose"]):
+        return jsonify({"success": False, "error": "Invalid goal type"}), 402
+
+    try:
+        goal = goalsC.find_one({
+            "username" : username,
+            "goal_type": goal_type,
+            "target"   : target,
+            "field"    : field,
+            "time_span": time_span
+        }, sort=[('dateSet', -1)])
+
+        if goal:
+            return jsonify({"success": True, "value": goal["goal"]}), 200
+        else:
+            return jsonify({"success": False, "error": "No goal found"}), 402
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 402
+
+
+@app.route("/goal", methods = ["POST"])
+def set_goal():
+    data = request.get_json()
+
+    username = data["username"]
+    goal_type = data["goalType"]
+    target = data["target"]
+    field = data["field"]
+    time_span = data["timeSpan"]
+
+    if (goal_type not in ["nutrition", "exercise", "glucose"]):
+        return jsonify({"success": False, "error": "Invalid goal type"}), 402
+
+    try:
+        find = goalsC.find_one({
+            "username" : username,
+            "goal_type": goal_type,
+            "time_span": time_span
+        })
+        
+        if find is not None and len(find) != 0:
+            goalsC.update_one({
+                "username" : username,
+                "goal_type": goal_type,
+                "time_span": time_span }, 
+                {"$set": {
+                "target" : target}
+                })
+        else:
+            goalsC.insert_one({
+                "username" : username,
+                "goal_type": goal_type,
+                "target"   : target,
+                "field"    : field,
+                "time_span": time_span,
+                "dateSet"  : datetime.now()
+            })
+        return jsonify({"success": True}), 201
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 402
+
+
+@app.route("/goal_progress", methods = ["GET"])
+def check_goal_progress():
+    #goal should be in the format "target(2000) field(e.g calories) time_span(day/week/month/year)"
+    data = request.get_json()
+    
+    username = data["username"]
+    goal_type = data["goalType"]
+    target = data["target"]
+    field = data["field"]
+    time_span = data["timeSpan"]
+
+    match goal_type:
+        case "nutrition":
+            collection = nutritionC
+        case "exercise": 
+            collection = exerciseC
+        case "glucose":
+            collection = glucoseC
+    
+    start_time = datetime.now()
+    match time_span:
+        case "day":
+            start_time = datetime.now() - timedelta(days=1)
+        case "week":
+            start_time = datetime.now() - timedelta(weeks=1)
+        case "month":
+            start_time = datetime.now() - timedelta(weeks=4)
+        case "year":
+            start_time = datetime.now() - timedelta(weeks=52)
+
+    try:
+        search = collection.find({
+            "username": username,
+            "date_time": {'$gte': start_time}
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 402
+
+    current = 0
+    count = 0
+    for entry in search:
+        count += 1
+        current += entry[field]
+    
+    if goal_type == "glucose":
+        current = current/count
+    
+    return jsonify({"success": True,
+                    "current": current,
+                    "progress": current/target}), 200
+    
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=10000,debug=True)
-
