@@ -305,16 +305,24 @@ def get_autocomplete_food():
 
 @app.route("/goal", methods = ["GET"])
 def get_goal():
-    user_id = request.args.get("username")
-    goal_type = request.args.get("goalType")
+    data = request.get_json()
+
+    username = data["username"]
+    goal_type = data["goalType"]
+    target = data["target"]
+    field = data["field"]
+    time_span = data["timeSpan"]
 
     if (goal_type not in ["nutrition", "exercise", "glucose"]):
         return jsonify({"success": False, "error": "Invalid goal type"}), 402
 
     try:
         goal = goalsC.find_one({
-            "username" : user_id,
-            "goal_type": goal_type
+            "username" : username,
+            "goal_type": goal_type,
+            "target"   : target,
+            "field"    : field,
+            "time_span": time_span
         }, sort=[('dateSet', -1)])
 
         if goal:
@@ -329,20 +337,39 @@ def get_goal():
 def set_goal():
     data = request.get_json()
 
-    user_id = data["username"]
+    username = data["username"]
     goal_type = data["goalType"]
-    goal = data["goal"]
+    target = data["target"]
+    field = data["field"]
+    time_span = data["timeSpan"]
 
     if (goal_type not in ["nutrition", "exercise", "glucose"]):
         return jsonify({"success": False, "error": "Invalid goal type"}), 402
 
     try:
-        goalsC.insert_one({
-            "username" : user_id,
+        find = goalsC.find_one({
+            "username" : username,
             "goal_type": goal_type,
-            "goal"     : goal,
-            "dateSet"  : datetime.now()
+            "time_span": time_span
         })
+        
+        if find is not None and len(find) != 0:
+            goalsC.update_one({
+                "username" : username,
+                "goal_type": goal_type,
+                "time_span": time_span }, 
+                {"$set": {
+                "target" : target}
+                })
+        else:
+            goalsC.insert_one({
+                "username" : username,
+                "goal_type": goal_type,
+                "target"   : target,
+                "field"    : field,
+                "time_span": time_span,
+                "dateSet"  : datetime.now()
+            })
         return jsonify({"success": True}), 201
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 402
@@ -352,17 +379,12 @@ def set_goal():
 def check_goal_progress():
     #goal should be in the format "target(2000) field(e.g calories) time_span(day/week/month/year)"
     data = request.get_json()
-    goal_type = data["goalType"]
-    goal = data["goal"]
+    
     username = data["username"]
-
-    try:
-        temp = goal.split(" ")
-        target = int(temp[0])
-        field = temp[1]
-        time_span = temp[2]
-    except Exception as e:
-        return jsonify({"success": False, "error": "Invalid goal format"}), 402
+    goal_type = data["goalType"]
+    target = data["target"]
+    field = data["field"]
+    time_span = data["timeSpan"]
 
     match goal_type:
         case "nutrition":
@@ -392,8 +414,13 @@ def check_goal_progress():
         return jsonify({"success": False, "error": str(e)}), 402
 
     current = 0
+    count = 0
     for entry in search:
+        count += 1
         current += entry[field]
+    
+    if goal_type == "glucose":
+        current = current/count
     
     return jsonify({"success": True,
                     "current": current,
