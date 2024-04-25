@@ -137,7 +137,7 @@ def get_blood_sugar_data():
 
     try:
         search = glucoseC.find({"username"        : username,
-                                "date-time"       : {'$gte': start_time}},
+                                "date_time"       : {'$gte': start_time}},
                                 {"_id"            :0,  #setting to 0 so wont appear in output
                                  "username"       :0,
                                 })
@@ -207,7 +207,7 @@ def get_food_data():
 
     try:
         search = nutritionC.find({"username"      : username,
-                                "date-time"       : {'$gte': start_time}},
+                                "date_time"       : {'$gte': start_time}},
                                 {"_id"            :0,
                                  "username"       :0,
                                 })
@@ -272,7 +272,7 @@ def get_exercise_data():
 
     try:
         search = exerciseC.find({"username"       : username,
-                                "date-time"       : {'$gte': start_time}},
+                                "date_time"       : {'$gte': start_time}},
                                 {"_id"            :0,
                                  "username"       :0,
                                 })
@@ -349,8 +349,9 @@ def set_goal():
 
 
 @app.route("/goal_progress", methods = ["GET"])
-def check_goal_progress(goal_type, goal, username):
-    #goal should be in the format "target(2000) field(e.g nutrition) time_span(day/week/month/year)"
+def check_goal_progress():
+    #goal should be in the format "target(2000) field(e.g calories) time_span(day/week/month/year)"
+    data = request.get_json()
     goal_type = data["goalType"]
     goal = data["goal"]
     username = data["username"]
@@ -370,7 +371,8 @@ def check_goal_progress(goal_type, goal, username):
             collection = exerciseC
         case "glucose":
             collection = glucoseC
-     
+    
+    start_time = datetime.now()
     match time_span:
         case "day":
             start_time = datetime.now() - timedelta(days=1)
@@ -381,21 +383,21 @@ def check_goal_progress(goal_type, goal, username):
         case "year":
             start_time = datetime.now() - timedelta(weeks=52)
 
-    start_time = datetime.now() - timedelta(days=1)
-
     try:
-        data = collection.find({
+        search = collection.find({
             "username": username,
-            "date-time": {'$gte': start_time}
+            "date_time": {'$gte': start_time}
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 402
 
     current = 0
-    for entry in data:
+    for entry in search:
         current += entry[field]
     
-    return jsonify({"success": True, "progress": current/target}), 200
+    return jsonify({"success": True,
+                    "current": current,
+                    "progress": current/target}), 200
     
 
 if __name__ == "__main__":
