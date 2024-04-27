@@ -307,13 +307,10 @@ def get_autocomplete_food():
 
 @app.route("/goal", methods = ["GET"])
 def get_goal():
-    data = request.get_json()
-
-    username = data["username"]
-    goal_type = data["goalType"]
-    target = data["target"]
-    field = data["field"]
-    time_span = data["timeSpan"]
+    username = request.args.get("username")
+    goal_type = request.args.get("goalType")
+    field = request.args.get("field")
+    time_span = request.args.get("timeSpan")
 
     if (goal_type not in ["nutrition", "exercise", "glucose"]):
         return jsonify({"success": False, "error": "Invalid goal type"}), 402
@@ -322,7 +319,6 @@ def get_goal():
         goal = goalsC.find_one({
             "username" : username,
             "goal_type": goal_type,
-            "target"   : target,
             "field"    : field,
             "time_span": time_span
         }, sort=[('dateSet', -1)])
@@ -381,12 +377,12 @@ def set_goal():
 def check_goal_progress():
     #goal should be in the format "target(2000) field(e.g calories) time_span(day/week/month/year)"
     data = request.get_json()
-    
-    username = data["username"]
-    goal_type = data["goalType"]
-    target = data["target"]
-    field = data["field"]
-    time_span = data["timeSpan"]
+
+    username = request.args.get("username")
+    goal_type = request.args.get("goalType")
+    target = request.args.get("target")
+    field = request.args.get("field")
+    time_span = request.args.get("timeSpan") 
 
     match goal_type:
         case "nutrition":
