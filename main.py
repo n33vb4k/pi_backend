@@ -105,6 +105,18 @@ def register():
         return jsonify({"success": False, "error": str(e) }), 400
 
 
+@app.route("/glucose", methods = ["DELETE"])
+def delete_glucose_data():
+    username = request.args.get("username")
+
+    try:
+        delete = glucoseC.delete_many({
+            "username" : username,
+        })
+        return jsonify({"success": True, "message": "Data deleted"}), 200
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e) }), 400
+
 
 @app.route("/glucose", methods=["POST"])
 def post_blood_sugar_data():
@@ -324,7 +336,7 @@ def get_goal():
         }, sort=[('dateSet', -1)])
 
         if goal:
-            return jsonify({"success": True, "value": goal["goal"]}), 200
+            return jsonify({"success": True, "value": goal["target"]}), 200
         else:
             return jsonify({"success": False, "error": "No goal found"}), 402
     except Exception as e:
@@ -376,7 +388,6 @@ def set_goal():
 @app.route("/goal_progress", methods = ["GET"])
 def check_goal_progress():
     #goal should be in the format "target(2000) field(e.g calories) time_span(day/week/month/year)"
-    data = request.get_json()
 
     username = request.args.get("username")
     goal_type = request.args.get("goalType")
@@ -426,10 +437,8 @@ def check_goal_progress():
 
 @app.route("/data_analysis_nutrition", methods = ["GET"])
 def get_data_analysis_nutrition():
-    data = request.get_json()
-
-    username = data["username"]
-    time_span = data["timeSpan"]
+    username = request.args.get("username")
+    time_span = request.args.get("timeSpan")
 
     current_timespan, compare_timespan = get_relative_timespan(time_span)
     collection = nutritionC
@@ -472,10 +481,8 @@ def get_data_analysis_nutrition():
 
 @app.route("/data_analysis_exercise", methods = ["GET"])
 def get_data_analysis_exercise():
-    data = request.get_json()
-
-    username = data["username"]
-    time_span = data["timeSpan"]
+    username = request.args.get("username")
+    time_span = request.args.get("timeSpan")
 
     current_timespan, compare_timespan = get_relative_timespan(time_span)
     collection = exerciseC
@@ -518,10 +525,8 @@ def get_data_analysis_exercise():
 
 @app.route("/data_analysis_glucose", methods = ["GET"])
 def get_data_analysis():
-    data = request.get_json()
-
-    username = data["username"]
-    time_span = data["timeSpan"]
+    username = request.args.get("username")
+    time_span = request.args.get("timeSpan")
 
     current_timespan, compare_timespan = get_relative_timespan(time_span)
     collection = glucoseC
