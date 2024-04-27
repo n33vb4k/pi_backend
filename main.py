@@ -10,6 +10,8 @@ from dotenv import load_dotenv
 import bcrypt
 import requests
 
+from utilities import get_relative_timespan
+
 load_dotenv()
 
 app = Flask(__name__)
@@ -102,6 +104,18 @@ def register():
         print(e)
         return jsonify({"success": False, "error": str(e) }), 400
 
+
+@app.route("/glucose", methods = ["DELETE"])
+def delete_glucose_data():
+    username = request.args.get("username")
+
+    try:
+        delete = glucoseC.delete_many({
+            "username" : username,
+        })
+        return jsonify({"success": True, "message": "Data deleted"}), 200
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e) }), 400
 
 
 @app.route("/glucose", methods=["POST"])
@@ -305,13 +319,10 @@ def get_autocomplete_food():
 
 @app.route("/goal", methods = ["GET"])
 def get_goal():
-    data = request.get_json()
-
-    username = data["username"]
-    goal_type = data["goalType"]
-    target = data["target"]
-    field = data["field"]
-    time_span = data["timeSpan"]
+    username = request.args.get("username")
+    goal_type = request.args.get("goalType")
+    field = request.args.get("field")
+    time_span = request.args.get("timeSpan")
 
     if (goal_type not in ["nutrition", "exercise", "glucose"]):
         return jsonify({"success": False, "error": "Invalid goal type"}), 402
@@ -320,13 +331,12 @@ def get_goal():
         goal = goalsC.find_one({
             "username" : username,
             "goal_type": goal_type,
-            "target"   : target,
             "field"    : field,
             "time_span": time_span
         }, sort=[('dateSet', -1)])
 
         if goal:
-            return jsonify({"success": True, "value": goal["goal"]}), 200
+            return jsonify({"success": True, "value": goal["target"]}), 200
         else:
             return jsonify({"success": False, "error": "No goal found"}), 402
     except Exception as e:
@@ -378,13 +388,12 @@ def set_goal():
 @app.route("/goal_progress", methods = ["GET"])
 def check_goal_progress():
     #goal should be in the format "target(2000) field(e.g calories) time_span(day/week/month/year)"
-    data = request.get_json()
-    
-    username = data["username"]
-    goal_type = data["goalType"]
-    target = data["target"]
-    field = data["field"]
-    time_span = data["timeSpan"]
+
+    username = request.args.get("username")
+    goal_type = request.args.get("goalType")
+    target = request.args.get("target")
+    field = request.args.get("field")
+    time_span = request.args.get("timeSpan") 
 
     match goal_type:
         case "nutrition":
@@ -426,170 +435,149 @@ def check_goal_progress():
                     "current": current,
                     "progress": current/target}), 200
 
+@app.route("/data_analysis_nutrition", methods = ["GET"])
+def get_data_analysis_nutrition():
+    username = request.args.get("username")
+    time_span = request.args.get("timeSpan")
 
-@app.route("/data_analysis", methods = ["GET"])
-def get_data_analysis():
-    data = request.get_json()
-
-    username = data["username"]
-    goal_type = data["goalType"]
-    time_span = data["timeSpan"]
-
-
-    current_timespan = datetime.now()
-    compare_timespan = datetime.now()
-
-    match goal_type:
-        case "nutrition":
-            collection = nutritionC
-        case "exercise": 
-            collection = exerciseC
-        case "glucose":
-            collection = glucoseC
-
-    match time_span:
-        case "day":
-            current_timespan -= timedelta(days=1)
-            compare_timespan = current_timespan - timedelta(days=1)
-        case "week":
-            current_timespan -= timedelta(weeks=1)
-            compare_timespan = current_timespan - timedelta(weeks=1)
-
-        case "month":
-            current_timespan -= timedelta(weeks=4)
-            compare_timespan = current_timespan - timedelta(weeks=4)
-
-        case "year":
-            current_timespan -= timedelta(weeks=52)
-            compare_timespan = current_timespan - timedelta(weeks=52)
-
-    #print(current_timespan)
-    #print(compare_timespan)
+    current_timespan, compare_timespan = get_relative_timespan(time_span)
+    collection = nutritionC
     
-    if goal_type == "nutrition":
-
-        try:
-            current_entries = collection.find({
-            "username": username,
-            "date_time": {'$gte': current_timespan}
-        })
-            
-            compare_entries = collection.find({
-            "username": username,
-            "date_time": {'$gte': compare_timespan, "$lt": current_timespan}
-        })
-
-        except Exception as e:
-            return jsonify({"success": False, "error": str(e)}), 402
-
-        current_calories = 0
-        comparing_calories = 0
-
-        for entry in current_entries:
-            try:
-                current_calories += entry["calories"]
-            except:pass
-
-        for entry in compare_entries:
-            try:
-                comparing_calories += entry["calories"]
-            except:pass 
-
-        if comparing_calories != 0: #Otherwise, there will be a division by 0 error
-
-            return jsonify({"success": True,
-                            "description": f"Calories eaten has changed by {current_calories/comparing_calories} compared to last {time_span}. {current_calories} vs {comparing_calories}"}), 200
-        else:
-            return jsonify({"success": False, 
-                            "error": "There was not enough data in the collection to perform the analysis for the given timespan (avoided a div by 0 error)"})
-    
-    elif goal_type == "exercise":
-
-        try:
-            current_entries = collection.find({
-            "username": username,
-            "date_time": {'$gte': current_timespan}
-        })
-            
-            compare_entries = collection.find({
-            "username": username,
-            "date_time": {'$gte': compare_timespan, "$lt": current_timespan}
-        })
-
-        except Exception as e:
-            return jsonify({"success": False, "error": str(e)}), 402
-
-        current_calories_burnt = 0
-        comparing_calories_burnt = 0
-
-        for entry in current_entries:
-            try:
-                current_calories_burnt += entry["calories_burnt"]
-            except:pass
-
-        for entry in compare_entries:
-            try:
-                comparing_calories_burnt += entry["calories_burnt"]
-            except:pass 
-
-        if comparing_calories_burnt != 0:
-            return jsonify({"success": True,
-                        "description": f"Calories burnt has changed by {current_calories_burnt/comparing_calories_burnt} compared to last {time_span}.  {current_calories_burnt} vs {comparing_calories_burnt}"}), 200
-        else:
-            return jsonify({"success": False, 
-                            "error": "There was not enough data in the collection to perform the analysis for the given timespan (avoided a div by 0 error)"})
-    
-    
-    elif goal_type == "glucose":
-
-        try:
-            current_entries = collection.find({
-            "username": username,
-            "date_time": {'$gte': current_timespan}
-        })
-            
-            compare_entries = collection.find({
-            "username": username,
-            "date_time": {'$gte': compare_timespan, "$lt": current_timespan}
-        })
-
-        except Exception as e:
-            return jsonify({"success": False, "error": str(e)}), 402
-
-        current_glucose_level = 0
-        comparing_glucose_level = 0
-
-        current_count = 0
-        comparing_count = 0
-
-        for entry in current_entries:
-            try:
-                current_glucose_level += entry["glucose_level"]
-                current_count += 1
-            except:pass
-
-        for entry in compare_entries:
-            try:
-                comparing_glucose_level+= entry["glucose_level"]
-                comparing_count += 1
-            except:pass 
+    try:
+        current_entries = collection.find({
+        "username": username,
+        "date_time": {'$gte': current_timespan}
+    })
         
-        if comparing_count == 0:
-            return jsonify({"success": False, 
-                            "error": "There was not enough data in the collection to perform the analysis for the given timespan (avoided a div by 0 error)"})
-    
-        current_glucose_level = current_glucose_level/current_count
-        comparing_glucose_level = comparing_glucose_level/comparing_count
+        compare_entries = collection.find({
+        "username": username,
+        "date_time": {'$gte': compare_timespan, "$lt": current_timespan}
+    })
 
-        if comparing_glucose_level != 0:
-            return jsonify({"success": True,
-                        "description": f"Glucose level has changed by {current_glucose_level/comparing_glucose_level} compared to last {time_span}.  {current_glucose_level} vs {comparing_glucose_level}"}), 200
-        else:
-            return jsonify({"success": False, 
-                            "error": "There was not enough data in the collection to perform the analysis for the given timespan (avoided a div by 0 error)"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 402
+
+    current_calories = 0
+    comparing_calories = 0
+
+    for entry in current_entries:
+        try:
+            current_calories += entry["calories"]
+        except:pass
+
+    for entry in compare_entries:
+        try:
+            comparing_calories += entry["calories"]
+        except:pass 
+
+    if comparing_calories != 0: #Otherwise, there will be a division by 0 error
+
+        return jsonify({"success": True,
+                        "description": f"Calories eaten has changed by {current_calories/comparing_calories} compared to last {time_span}. {current_calories} vs {comparing_calories}"}), 200
+    else:
+        return jsonify({"success": False, 
+                        "error": "There was not enough data in the collection to perform the analysis for the given timespan (avoided a div by 0 error)"})
+
+
+@app.route("/data_analysis_exercise", methods = ["GET"])
+def get_data_analysis_exercise():
+    username = request.args.get("username")
+    time_span = request.args.get("timeSpan")
+
+    current_timespan, compare_timespan = get_relative_timespan(time_span)
+    collection = exerciseC
+
+    try:
+        current_entries = collection.find({
+        "username": username,
+        "date_time": {'$gte': current_timespan}
+    })
+        
+        compare_entries = collection.find({
+        "username": username,
+        "date_time": {'$gte': compare_timespan, "$lt": current_timespan}
+    })
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 402
+
+    current_calories_burnt = 0
+    comparing_calories_burnt = 0
+
+    for entry in current_entries:
+        try:
+            current_calories_burnt += entry["calories_burnt"]
+        except:pass
+
+    for entry in compare_entries:
+        try:
+            comparing_calories_burnt += entry["calories_burnt"]
+        except:pass 
+
+    if comparing_calories_burnt != 0:
+        return jsonify({"success": True,
+                    "description": f"Calories burnt has changed by {current_calories_burnt/comparing_calories_burnt} compared to last {time_span}.  {current_calories_burnt} vs {comparing_calories_burnt}"}), 200
+    else:
+        return jsonify({"success": False, 
+                        "error": "There was not enough data in the collection to perform the analysis for the given timespan (avoided a div by 0 error)"})
+
+
+
+@app.route("/data_analysis_glucose", methods = ["GET"])
+def get_data_analysis():
+    username = request.args.get("username")
+    time_span = request.args.get("timeSpan")
+
+    current_timespan, compare_timespan = get_relative_timespan(time_span)
+    collection = glucoseC
+
+    try:
+        current_entries = collection.find({
+        "username": username,
+        "date_time": {'$gte': current_timespan}
+    })
+        
+        compare_entries = collection.find({
+        "username": username,
+        "date_time": {'$gte': compare_timespan, "$lt": current_timespan}
+    })
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 402
+
+    current_glucose_level = 0
+    comparing_glucose_level = 0
+
+    current_count = 0
+    comparing_count = 0
+
+    for entry in current_entries:
+        try:
+            current_glucose_level += entry["glucose_level"]
+            current_count += 1
+        except:pass
+
+    for entry in compare_entries:
+        try:
+            comparing_glucose_level+= entry["glucose_level"]
+            comparing_count += 1
+        except:pass 
     
-    
-    
+    if comparing_count == 0:
+        return jsonify({"success": False, 
+                        "error": "There was not enough data in the collection to perform the analysis for the given timespan (avoided a div by 0 error)"})
+
+    current_glucose_level = current_glucose_level/current_count
+    comparing_glucose_level = comparing_glucose_level/comparing_count
+
+    if comparing_glucose_level != 0:
+        return jsonify({"success": True,
+                    "description": f"Glucose level has changed by {current_glucose_level/comparing_glucose_level} compared to last {time_span}.  {current_glucose_level} vs {comparing_glucose_level}"}), 200
+    else:
+        return jsonify({"success": False, 
+                        "error": "There was not enough data in the collection to perform the analysis for the given timespan (avoided a div by 0 error)"})
+
+
 
     
 
