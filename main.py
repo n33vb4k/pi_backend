@@ -161,6 +161,21 @@ def get_blood_sugar_data():
         return jsonify({"success": False, "error": str(e) }), 401
 
 
+@app.route("/nutrition", methods = ["DELETE"])
+def delete_nutrition_data():
+    username = request.args.get("username")
+    try:
+        delete = nutritionC.delete_many({
+            "username" : username,
+            "date_time": datetime.fromisoformat("2024-04-27T18:24:46.732+00:00")
+        })
+
+        return jsonify({"success": True, "message": "Data deleted"}), 200
+    except Exception as e:
+        print(e)
+        return jsonify({"success": False, "error": str(e) }), 400
+    
+
 @app.route("/nutrition", methods=["POST"])
 def post_food_data():
     data = request.get_json()

@@ -118,8 +118,9 @@ def create_fake_nutrition_data():
     # Send a POST request to the API
     response = requests.post("http://127.0.0.1:10000/nutrition", json=nutrition_data)
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
   # create_fake_exercise_data()
-  # requests.delete('http://127.0.0.1:10000/glucose?username=Neev123')
+  requests.delete('http://127.0.0.1:10000/nutrition?username=Neev123')
   # create_fake_glucose_data()
   # create_fake_nutrition_data()
+  
